@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken')
 
 
 const generateJWT = (id,email,role) =>{
-    return jwt.sign({id,email,role},process.env.SECRET_KEY,{expiresIn:'1h'})
+    return jwt.sign({id,email,role},process.env.SECRET_KEY,{expiresIn:'30m'})
 }
 
 class UserController {
@@ -25,7 +25,7 @@ class UserController {
             const token =  generateJWT(user.id,email,role)
             return res.json({token})
         }catch(e){
-            console.log(e)
+            return res.status(403).json({message:e})
         }
     }
 
@@ -49,7 +49,7 @@ class UserController {
                 return res.json({token})
 
         }catch(e){
-            console.log(e)
+            return res.status(403).json({message:e})
         }
     }
 
@@ -58,7 +58,7 @@ class UserController {
             const token = generateJWT(req.user.id,req.user.email,req.user.role)
             return res.json({token})
         }catch(e){
-            return res.json({message:e})
+            return res.stastus(401).json({message:e})
         }
     }
 

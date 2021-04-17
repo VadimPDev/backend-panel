@@ -14,9 +14,9 @@ const generatePassword = (
 
 
 class ServerController {
-    
+
     async create(req,res){
-        
+
     }
 
     async getInfo(req,res){
@@ -69,7 +69,7 @@ class ServerController {
                 break
             case 360:
                 price *=12
-                break            
+                break
         }
 
         if(currentUser.balance >= price){
@@ -119,7 +119,7 @@ class ServerController {
                     exec = './samp03svr'
                     break
                 default:
-                    exec = ''    
+                    exec = ''
             }
             const start = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/start',{
                 id:currentServer.id,
@@ -137,7 +137,7 @@ class ServerController {
         }
     }
 
-    
+
     async stop(req,res){
         const {serverId} = req.body
 
@@ -159,12 +159,12 @@ class ServerController {
     }
 
     async getAll(req,res) {
-        
+
     }
 
     async getUserServers(req,res){
         const servers = await Server.findAll({where:{userId:req.user.id},order: [ [ 'createdAt', 'ASC' ]],include:[{model:Location,attributes:['l_ip','l_name']},{model:Game,attributes:['g_name']}]})
-        
+
         return res.json(servers)
     }
 
