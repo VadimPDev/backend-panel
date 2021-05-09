@@ -22,6 +22,19 @@ const Server = sequelize.define('server',{
     s_reg:{type:DataTypes.DATE},
     s_end:{type:DataTypes.DATE},
     s_mysql:{type:DataTypes.INTEGER},
+    s_rcon:{type:DataTypes.STRING},
+    s_fps:{type:DataTypes.INTEGER,defaultValue:0}
+})
+
+const Ticket = sequelize.define('ticket',{
+    id:{type:DataTypes.INTEGER,primaryKey:true,autoIncrement:true},
+    t_name:{type:DataTypes.STRING},
+    t_status:{type:DataTypes.INTEGER},
+})
+
+const TicketMessage = sequelize.define('ticket_message',{
+    id:{type:DataTypes.INTEGER,primaryKey:true,autoIncrement:true},
+    t_message:{type:DataTypes.STRING},
 })
 
 const Location = sequelize.define('location',{
@@ -56,6 +69,15 @@ const Game = sequelize.define('game',{
 User.hasMany(Server)
 Server.belongsTo(User)
 
+User.hasMany(Ticket)
+Ticket.belongsTo(User)
+
+User.hasMany(TicketMessage)
+TicketMessage.belongsTo(User)
+
+Ticket.hasMany(TicketMessage)
+TicketMessage.belongsTo(Ticket)
+
 Location.hasMany(Server)
 Server.belongsTo(Location)
 
@@ -73,5 +95,7 @@ module.exports = {
     Server,
     Location,
     Game,
-    Version
+    Version,
+    Ticket,
+    TicketMessage
 }

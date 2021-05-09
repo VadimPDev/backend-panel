@@ -5,9 +5,8 @@ const checkRoleMiddleware = require('../middleware/checkRoleMiddleware')
 
 const router = new Router()
 
-router.post('/registration',UserController.registration)
-router.post('/login',UserController.login)
-router.get('/check',authMiddleware,UserController.check)
+router.get('/users',checkRoleMiddleware('ADMIN'), UserController.getAllUsers)
+router.post('/users/edit',checkRoleMiddleware('ADMIN'),UserController.edit)
 
 
 module.exports  = router

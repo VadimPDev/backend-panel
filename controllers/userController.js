@@ -55,10 +55,40 @@ class UserController {
 
     async check(req,res,next){
         try{
-            const token = generateJWT(req.user.id,req.user.email,req.user.role)
+            const token = req.headers.authorization.split(' ')[1]
+            if(!token){
+                return res.stastus(401).json({message:e})
+            }
             return res.json({token})
         }catch(e){
-            return res.stastus(401).json({message:e})
+            return res.status(403).json({message:e})
+        }
+    }
+
+    async edit(req,res){
+        try{
+            const {id,name,email,family,balance,role,number} = req.body
+
+            const candidate = await User.findOne({where:{id}})
+
+            if(!candidate){
+                return res.status(403).json({message:e})
+            }
+            await candidate.update({name,email,family,balance,role,number})
+            return res.json({message:'Пользователь сохранен'})
+        }catch(e){
+            console.log(e)
+            return res.status(403).json({message:e})
+        }
+    }
+
+
+    async getAllUsers(req,res){
+        try{
+            const users = await User.findAll({order: [ [ 'createdAt', 'ASC' ]]})
+            return res.json(users)
+        }catch(e){
+            return res.status(403).json({message:e})
         }
     }
 

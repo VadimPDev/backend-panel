@@ -12,6 +12,11 @@ router.post('/start',authMiddleware,ServerController.start)
 router.post('/stop',authMiddleware,ServerController.stop)
 router.get('/my',authMiddleware,ServerController.getServerById)
 router.get('/info',authMiddleware,ServerController.getInfo)
+router.get('/cron',ServerController.cronRun)
+router.get('/config',authMiddleware,ServerController.getConfig)
+router.post('/config',authMiddleware,ServerController.putConfig)
+router.post('/rcon',ServerController.rconSend)
+router.get('/console',authMiddleware,ServerController.getConsole)
 
 
 module.exports  = router

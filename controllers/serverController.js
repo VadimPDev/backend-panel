@@ -2,7 +2,9 @@ const {Game, User, Location, Server, Version} = require('../models/models')
 const axios = require('axios')
 const crypto = require('crypto')
 const query  = require('samp-query')
-
+const moment = require('moment')
+const sampRcon = require('../utils/sampRCON')
+const gameDig = require('gamedig')
 
 const generatePassword = (
     length = 10,
@@ -26,79 +28,101 @@ class ServerController {
             where:{id},
             include:[
                 {model:Location,attributes:['l_ip']},
+                {model:Game,attributes:['g_code']}
             ]})
 
         if(req.user.id === currentServer.userId){
-           query({host:currentServer.location.l_ip,port:currentServer.s_port},(error,response) =>{
+           /*query({host:currentServer.location.l_ip,port:currentServer.s_port},(error,response) =>{
                if(error){
                    console.log(error)
                }else{
                    return res.json(response)
                }
-           })
+           })*/
+           try{
+                const info = await gameDig.query({type:currentServer.game.g_code,host:currentServer.location.l_ip,port:currentServer.s_port})
+                return res.json(info)
+           }catch(e){
+                return res.status(403).json({mesasge:'error'})
+           }
         }
     }
 
     async order(req,res){
-        const {game_id,location_id,slots,period,version_id} = req.body
+        try{
+            const {game_id,location_id,slots,period,version_id} = req.body
 
-        const currentUser = await User.findOne({where:{id:req.user.id}})
+            const currentUser = await User.findOne({where:{id:req.user.id}})
 
-        const currentGame = await Game.findOne({where:{id:game_id}})
-        const currentLocation = await Location.findOne({where:{id:location_id}})
-        const currentVersion = await Version.findOne({where:{id:version_id}})
+            const currentGame = await Game.findOne({where:{id:game_id}})
+            const currentLocation = await Location.findOne({where:{id:location_id}})
+            const currentVersion = await Version.findOne({where:{id:version_id}})
 
-        const lastServer = await Server.findOne({order: [ [ 'createdAt', 'DESC' ]]})
-        let port = currentGame.g_min_port
-        if(lastServer){
-            port = lastServer.s_port + 1
+            const lastServer = await Server.findOne({where:{gameId:game_id},order: [ [ 'createdAt', 'DESC' ]]})
+            let port
+            if(lastServer){
+                switch(currentGame.g_code){
+                    case 'mta':
+                        port = lastServer.s_port + 2
+                        break
+                    default:
+                        port = lastServer.s_port + 1
+                        break
+                }
+            }else{
+                port = currentGame.g_min_port
+            }
             if(port > currentGame.g_max_port){
                 return res.json({message:'Нет свободных портов'})
             }
-        }
-        let price = slots * currentGame.g_price
+            let price = slots * currentGame.g_price
 
-        switch(period){
-            case 30:
-                break
-            case 90:
-                price *= 3
-                break
-            case 180:
-                price *= 6
-                break
-            case 360:
-                price *=12
-                break
-        }
+            switch(period){
+                case 30:
+                    break
+                case 90:
+                    price *= 3
+                    break
+                case 180:
+                    price *= 6
+                    break
+                case 360:
+                    price *=12
+                    break
+            }
 
-        if(currentUser.balance >= price){
-            const server = await Server.create({
-                s_slots:slots,
-                s_port:port,
-                s_password:generatePassword(),
-                s_status:0,
-                s_reg:new Date(2021,3,3),
-                s_end:new Date(2021,4,3),
-                s_mysql:1,
-                userId:currentUser.id,
-                gameId:currentGame.id,
-                locationId:currentLocation.id,
-                versionId:version_id
-            })
-            const install = await axios.post('http://'+ currentLocation.l_ip + ':'+ currentLocation.l_port + '/install',{
-                id:server.id,
-                password:server.s_password,
-                game_code:currentGame.g_code,
-                version_code:currentVersion.v_code,
-            })
-            await User.update({balance:currentUser.balance - price},{where:{id:currentUser.id}})
-            return res.json({message:'Сервер успешно создан'})
+            if(currentUser.balance >= price){
+                const server = await Server.create({
+                    s_slots:slots,
+                    s_port:port,
+                    s_password:generatePassword(),
+                    s_status:0,
+                    s_reg:moment(),
+                    s_end:moment().add(period,'days'),
+                    s_mysql:1,
+                    s_rcon:generatePassword(),
+                    s_fps:200,
+                    userId:currentUser.id,
+                    gameId:currentGame.id,
+                    locationId:currentLocation.id,
+                    versionId:version_id
+                })
+                const install = await axios.post('http://'+ currentLocation.l_ip + ':'+ currentLocation.l_port + '/install',{
+                    id:server.id,
+                    password:server.s_password,
+                    game_code:currentGame.g_code,
+                    version_code:currentVersion.v_code,
+                })
+                await User.update({balance:currentUser.balance - price},{where:{id:currentUser.id}})
+                return res.json({message:'Сервер успешно создан'})
         }
         else{
             return res.status(403).json({message:'недостаточно средств'})
         }
 
+        }catch(e){
+            return res.status(403).json({message:'Локация недоступна'})
+        }
     }
 
     async start(req,res){
@@ -118,6 +142,12 @@ class ServerController {
                 case 'samp':
                     exec = './samp03svr'
                     break
+                case 'mtasa':
+                    exec = './mta-server64'
+                    break
+                case 'cs16':
+                    exec = `./hlds_run -debug -game cstrike -norestart -sys_ticrate 200 +servercfgfile server.cfg +sys_ticrate 200 +map de_dust2 +maxplayers ${currentServer.s_slots} +ip ${currentServer.location.l_ip} +port ${currentServer.s_port} +sv_lan 0`
+                    break
                 default:
                     exec = ''
             }
@@ -128,7 +158,9 @@ class ServerController {
                 exec_cmd:exec,
                 slots:currentServer.s_slots,
                 port:currentServer.s_port,
-                ip:'10.164.0.3'
+                rcon:currentServer.s_rcon,
+                fps:currentServer.s_fps,
+                ip:'10.166.0.2'
             })
             await Server.update({s_status:1},{where:{id:currentServer.id}})
             return res.json({message:'Сервер успешно запущен'})
@@ -177,6 +209,114 @@ class ServerController {
                 {model:Version,attributes:['v_name']}
             ]})
         return res.json(server)
+    }
+
+    async cronRun(req,res){
+        try{
+            const servers = await Server.findAll()
+            servers.forEach(async(server) => {
+                const now = moment()
+                const date_end = moment(server.s_end)
+                console.log('now', now)
+                console.log('end', date_end)
+
+                if( now > date_end){
+                    await Server.update({s_status:3},{where:{id:server.id}})
+                }else{
+                    console.log(true)
+                }
+            })
+            return res.json({message:'ok'})
+        }catch(e){
+            return res.status(403).json({message:'error'})
+        }
+
+    }
+
+    async getConfig(req,res){
+        try{
+            const {id} = req.query
+            const currentServer = await Server.findOne({
+                where:{id},
+                include:[
+                    {model:Location,attributes:['l_ip','l_port']},
+                    {model:Game,attributes:['g_code']}
+                ]})
+
+            if(req.user.id === currentServer.userId){
+                const config = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/get_config',{
+                    id:currentServer.id,
+                    game_code:currentServer.game.g_code,
+                })
+                return res.json({message:'ok',response:config.data.response})
+
+            }
+            return res.status(403).json({message:'error server'})
+        }catch(e){
+            return res.status(403).json({message:e})
+        }
+    }
+
+    async putConfig(req,res){
+        try{
+            const {id,config} = req.body
+            console.log(req.body)
+            const currentServer = await Server.findOne({
+                where:{id},
+                include:[
+                    {model:Location,attributes:['l_ip','l_port']},
+                    {model:Game,attributes:['g_code']}
+                ]})
+
+            if(req.user.id === currentServer.userId){
+                const edit = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/config',{
+                    id:currentServer.id,
+                    game_code:currentServer.game.g_code,
+                    config,
+                })
+                return res.json({message:'ok',response:edit.data.response})
+
+            }
+            return res.status(403).json({message:'error server'})
+        }catch(e){
+            return res.status(403).json({message:e})
+        }
+    }
+
+    async rconSend(req,res){
+        try{
+            const api = new sampRcon('34.91.89.28',3017,'hbsada2131')
+            api.call('kick 1 from api',(e,i) =>{
+                console.log('log')
+            })
+            api.close()
+            return res.json({message:'ok'})
+        }catch(e){
+            console.log(e)
+            return res.status(403).json({message:e})
+        }
+    }
+
+    async getConsole(req,res){
+        try{
+            const {id} = req.query
+            const currentServer = await Server.findOne({
+                where:{id},
+                include:[
+                    {model:Location,attributes:['l_ip','l_port']},
+                    {model:Game,attributes:['g_code']}
+            ]})
+            if(req.user.id === currentServer.userId){
+                const console = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/console',{
+                        id:currentServer.id,
+                        game_code:currentServer.game.g_code,
+                })
+                return res.json({message:'ok',response:console.data.response})
+
+            }
+        }catch(e){
+            return res.status(403).json({message:e})
+        }
     }
 
 }
