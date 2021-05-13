@@ -8,7 +8,7 @@ const gameDig = require('gamedig')
 
 const generatePassword = (
     length = 10,
-    wishlist = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz~!@-#$'
+    wishlist = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
   ) =>
     Array.from(crypto.randomFillSync(new Uint32Array(length)))
       .map((x) => wishlist[x % wishlist.length])
@@ -147,6 +147,9 @@ class ServerController {
                     break
                 case 'cs16':
                     exec = `./hlds_run -debug -game cstrike -norestart -sys_ticrate 200 +servercfgfile server.cfg +sys_ticrate 200 +map de_dust2 +maxplayers ${currentServer.s_slots} +ip ${currentServer.location.l_ip} +port ${currentServer.s_port} +sv_lan 0`
+                    break
+                case 'minecraft':
+                    exec = 'java -Xms1024M -Xmx1024M -jar server.jar nogui'
                     break
                 default:
                     exec = ''
