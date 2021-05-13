@@ -16,7 +16,6 @@ class VersionController {
             return
         }
         const versions = await Version.findAll({where:{gameId}})
-        console.log(versions)
         return res.json(versions)
     }
 
