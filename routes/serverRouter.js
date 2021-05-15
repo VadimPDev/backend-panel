@@ -15,7 +15,7 @@ router.get('/info',authMiddleware,ServerController.getInfo)
 router.get('/cron',ServerController.cronRun)
 router.get('/config',authMiddleware,ServerController.getConfig)
 router.post('/config',authMiddleware,ServerController.putConfig)
-router.post('/rcon',ServerController.rconSend)
+router.post('/rcon',authMiddleware,ServerController.rconSend)
 router.get('/console',authMiddleware,ServerController.getConsole)
 
 

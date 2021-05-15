@@ -5,6 +5,7 @@ const query  = require('samp-query')
 const moment = require('moment')
 const sampRcon = require('../utils/sampRCON')
 const gameDig = require('gamedig')
+const MinecraftRCON = require('rcon-client')
 
 const generatePassword = (
     length = 10,
@@ -16,10 +17,6 @@ const generatePassword = (
 
 
 class ServerController {
-
-    async create(req,res){
-
-    }
 
     async getInfo(req,res){
         const {id} = req.query
@@ -63,6 +60,9 @@ class ServerController {
             if(lastServer){
                 switch(currentGame.g_code){
                     case 'mta':
+                        port = lastServer.s_port + 2
+                        break
+                    case 'minecraft':
                         port = lastServer.s_port + 2
                         break
                     default:
@@ -126,70 +126,78 @@ class ServerController {
     }
 
     async start(req,res){
-        const {serverId} = req.body
+        try{
+            const {serverId} = req.body
 
-        const currentServer = await Server.findOne({
-            where:{id:serverId},
-            include:[
-                {model:Location,attributes:['l_ip','l_port']},
-                {model:Version,attributes:['v_code']},
-                {model:Game,attributes:['g_code']}
-            ]})
-
-        if(req.user.id === currentServer.userId){
-            let exec = ''
-            switch(currentServer.game.g_code){
-                case 'samp':
-                    exec = './samp03svr'
-                    break
-                case 'mtasa':
-                    exec = './mta-server64'
-                    break
-                case 'cs16':
-                    exec = `./hlds_run -debug -game cstrike -norestart -sys_ticrate 200 +servercfgfile server.cfg +sys_ticrate 200 +map de_dust2 +maxplayers ${currentServer.s_slots} +ip ${currentServer.location.l_ip} +port ${currentServer.s_port} +sv_lan 0`
-                    break
-                case 'minecraft':
-                    exec = 'java -Xms1024M -Xmx1024M -jar server.jar nogui'
-                    break
-                default:
-                    exec = ''
+            const currentServer = await Server.findOne({
+                where:{id:serverId},
+                include:[
+                    {model:Location,attributes:['l_ip','l_port']},
+                    {model:Version,attributes:['v_code']},
+                    {model:Game,attributes:['g_code']}
+                ]})
+    
+            if(req.user.id === currentServer.userId){
+                let exec = ''
+                switch(currentServer.game.g_code){
+                    case 'samp':
+                        exec = './samp03svr'
+                        break
+                    case 'mtasa':
+                        exec = './mta-server64'
+                        break
+                    case 'cs16':
+                        exec = `./hlds_run -debug -game cstrike -norestart -sys_ticrate 200 +servercfgfile server.cfg +sys_ticrate 200 +map de_dust2 +maxplayers ${currentServer.s_slots} +ip ${currentServer.location.l_ip} +port ${currentServer.s_port} +sv_lan 0`
+                        break
+                    case 'minecraft':
+                        exec = 'java -Xms1024M -Xmx1024M -jar server.jar nogui'
+                        break
+                    default:
+                        exec = ''
+                }
+                const start = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/start',{
+                    id:currentServer.id,
+                    game_code:currentServer.game.g_code,
+                    version_code:currentServer.version.v_code,
+                    exec_cmd:exec,
+                    slots:currentServer.s_slots,
+                    port:currentServer.s_port,
+                    rcon:currentServer.s_rcon,
+                    fps:currentServer.s_fps,
+                    ip:'10.166.0.2'
+                })
+                await Server.update({s_status:1},{where:{id:currentServer.id}})
+                return res.json({message:'Сервер успешно запущен'})
+            }else{
+                return res.status(403).json({message:'доступ запрещен'})
             }
-            const start = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/start',{
-                id:currentServer.id,
-                game_code:currentServer.game.g_code,
-                version_code:currentServer.version.v_code,
-                exec_cmd:exec,
-                slots:currentServer.s_slots,
-                port:currentServer.s_port,
-                rcon:currentServer.s_rcon,
-                fps:currentServer.s_fps,
-                ip:'10.166.0.2'
-            })
-            await Server.update({s_status:1},{where:{id:currentServer.id}})
-            return res.json({message:'Сервер успешно запущен'})
-        }else{
-            return res.status(403).json({message:'доступ запрещен'})
+        }catch(e){
+            return res.status(403).json({message:'Ошибка'})
         }
     }
 
 
     async stop(req,res){
-        const {serverId} = req.body
+        try{
+            const {serverId} = req.body
 
-        const currentServer = await Server.findOne({
-            where:{id:serverId},
-            include:[
-                {model:Location,attributes:['l_ip','l_port']},
-            ]})
-
-        if(req.user.id === currentServer.userId){
-            const start = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/stop',{
-                id:currentServer.id,
-            })
-            await Server.update({s_status:0},{where:{id:currentServer.id}})
-            return res.json({message:'Сервер успешно остановлен'})
-        }else{
-            return res.status(403).json({message:'доступ запрещен'})
+            const currentServer = await Server.findOne({
+                where:{id:serverId},
+                include:[
+                    {model:Location,attributes:['l_ip','l_port']},
+                ]})
+    
+            if(req.user.id === currentServer.userId){
+                const start = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/stop',{
+                    id:currentServer.id,
+                })
+                await Server.update({s_status:0},{where:{id:currentServer.id}})
+                return res.json({message:'Сервер успешно остановлен'})
+            }else{
+                return res.status(403).json({message:'доступ запрещен'})
+            }
+        }catch(e){
+            return res.status(403).json({message:'Ошибка'})
         }
     }
 
@@ -204,14 +212,18 @@ class ServerController {
     }
 
     async getServerById(req,res){
-        const {id} = req.query
-        const server = await Server.findOne({where:{id},
-            include:[
-                {model:Location,attributes:['l_ip','l_name']},
-                {model:Game,attributes:['g_name','g_code']},
-                {model:Version,attributes:['v_name']}
-            ]})
-        return res.json(server)
+        try{
+            const {id} = req.query
+            const server = await Server.findOne({where:{id},
+                include:[
+                    {model:Location,attributes:['l_ip','l_name']},
+                    {model:Game,attributes:['g_name','g_code']},
+                    {model:Version,attributes:['v_name']}
+                ]})
+            return res.json(server)
+        }catch(e){
+            return res.status(403).json({message:'Ошибка'})
+        }
     }
 
     async cronRun(req,res){
@@ -288,12 +300,20 @@ class ServerController {
 
     async rconSend(req,res){
         try{
-            const api = new sampRcon('34.91.89.28',3017,'hbsada2131')
-            api.call('kick 1 from api',(e,i) =>{
-                console.log('log')
-            })
-            api.close()
-            return res.json({message:'ok'})
+            const {id, command} = req.body
+            const currentServer = await Server.findOne({where:{id},include:[
+                {model:Game,attributes:['g_code']},
+                {model:Location,attributes:['l_ip']}
+            ]})
+            let response
+            switch(currentServer.game.g_code){
+                case 'minecraft':
+                    const query =  new MinecraftRCON.Rcon({host:currentServer.location.l_ip,port:currentServer.s_port + 1,password:currentServer.s_rcon})
+                    await query.connect()
+                    response = await query.send(command)
+                    query.end()
+            }
+            return res.json({message:'ok',response})
         }catch(e){
             console.log(e)
             return res.status(403).json({message:e})
