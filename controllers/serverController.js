@@ -311,7 +311,8 @@ class ServerController {
                 case 'minecraft':
                     query =  new MinecraftRCON.Rcon({host:currentServer.location.l_ip,port:currentServer.s_port + 1,password:currentServer.s_rcon})
                     await query.connect()
-                    response = await query.send(command).split('/').join('\n'.concat('/'))
+                    const send = await query.send(command)
+                    response = send.split('/').join('\n'.concat('/'))
                     query.end()
                     break
                 default:
