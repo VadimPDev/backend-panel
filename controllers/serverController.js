@@ -136,7 +136,7 @@ class ServerController {
                     {model:Version,attributes:['v_code']},
                     {model:Game,attributes:['g_code']}
                 ]})
-    
+
             if(req.user.id === currentServer.userId){
                 let exec = ''
                 switch(currentServer.game.g_code){
@@ -186,7 +186,7 @@ class ServerController {
                 include:[
                     {model:Location,attributes:['l_ip','l_port']},
                 ]})
-    
+
             if(req.user.id === currentServer.userId){
                 const start = await axios.post('http://'+ currentServer.location.l_ip + ':'+ currentServer.location.l_port + '/stop',{
                     id:currentServer.id,
@@ -306,12 +306,17 @@ class ServerController {
                 {model:Location,attributes:['l_ip']}
             ]})
             let response
+            let query
             switch(currentServer.game.g_code){
                 case 'minecraft':
-                    const query =  new MinecraftRCON.Rcon({host:currentServer.location.l_ip,port:currentServer.s_port + 1,password:currentServer.s_rcon})
+                    query =  new MinecraftRCON.Rcon({host:currentServer.location.l_ip,port:currentServer.s_port + 1,password:currentServer.s_rcon})
                     await query.connect()
-                    response = await query.send(command)
+                    response = await query.send(command).split('/').join('\n'.concat('/'))
                     query.end()
+                    break
+                default:
+                    response = ''
+                    break
             }
             return res.json({message:'ok',response})
         }catch(e){

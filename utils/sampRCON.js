@@ -25,11 +25,9 @@ function SAMPApi(ip, port, pwd) {
 		]);
 
 		client.on('message', function(msg, info) {
-			console.log(msg, info)
 			return (callback !== undefined) ? callback(msg, info) : void 0;
 		});
 		client.on('error',(e) =>{
-			console.log('error')
 		})
 		client.send(packet, 0, packet.length, port, ip, function(err) { if (err) throw err })
 	};
