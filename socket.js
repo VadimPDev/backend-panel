@@ -8,7 +8,7 @@ module.exports = (http) =>{
             origin: "http://localhost:3000",
             methods: ["GET", "POST"]
         },
-        transports: ["websocket"]
+        transports: ["websocket","polling"]
     })
 
     io.on('connection',socket =>{
@@ -24,7 +24,6 @@ module.exports = (http) =>{
         })
 
         socket.on('exit', (id) => {
-            console.log('disconnect')
             socket.leave(id)
           })
     })
