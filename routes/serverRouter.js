@@ -17,6 +17,7 @@ router.get('/config',authMiddleware,ServerController.getConfig)
 router.post('/config',authMiddleware,ServerController.putConfig)
 router.post('/rcon',authMiddleware,ServerController.rconSend)
 router.get('/console',authMiddleware,ServerController.getConsole)
+router.post('/changeRcon',authMiddleware,ServerController.changeRcon)
 
 
 module.exports  = router

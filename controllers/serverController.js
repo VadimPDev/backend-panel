@@ -348,6 +348,16 @@ class ServerController {
         }
     }
 
+    async changeRcon(req,res){
+        try{
+            const {id,rcon} = req.body
+            const change = await Server.update({s_rcon:rcon},{where:{id}})
+            return res.json({message:'ok'})
+        }catch(e){
+            return res.status(403).json({message:e})
+        }
+    }
+
 }
 
 
