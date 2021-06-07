@@ -1,5 +1,5 @@
 const { version } = require('uuid')
-const {Version} = require('../models/models')
+const {Version,Game} = require('../models/models')
 
 class VersionController {
     
@@ -10,13 +10,25 @@ class VersionController {
         return res.json(version)
     }
 
-    async getAll(req,res) {
+    async getVersion(req,res) {
         const {gameId} = req.query
         if(gameId === undefined){
             return
         }
         const versions = await Version.findAll({where:{gameId}})
         return res.json(versions)
+    }
+
+    async getAll(req,res) {
+
+        try{
+            const versions = await Version.findAll({include:[
+                {model:Game,attributes:['g_name']}
+            ]})
+            return res.json(versions)
+        }catch(e){
+            return res.status(403).json({message:e})
+        }
     }
 
 }

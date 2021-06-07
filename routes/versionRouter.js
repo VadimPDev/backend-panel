@@ -4,8 +4,9 @@ const checkRole = require('../middleware/checkRoleMiddleware')
 
 const router = new Router()
 
-router.post('/create',checkRole('ADMIN'),VersionController.create)
-router.get('/',VersionController.getAll)
+router.post('/',checkRole('ADMIN'),VersionController.create)
+router.get('/',VersionController.getVersion)
+router.get('/all',VersionController.getAll)
 
 
 module.exports  = router
